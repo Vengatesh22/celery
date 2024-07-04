@@ -238,6 +238,8 @@ class Worker(_pool.Worker):
         # our version sends a WORKER_UP message when the process is ready
         # to accept work, this will tell the parent that the inqueue fd
         # is writable.
+        logger.info(f"On loop start for worker {pid}")
+        logger.info(f"Sending WORKER_UP message for worker {pid}")
         self.outq.put((WORKER_UP, (pid,)))
 
 
@@ -477,8 +479,12 @@ class AsynPool(_pool.Pool):
         )
 
     def _create_worker_process(self, i):
+        logger.info(f"{i} - Begin creating worker process")
         worker_before_create_process.send(sender=self)
+        logger.info(f"{i} - Begin Garbage Collection")
         gc.collect()  # Issue #2927
+        logger.info(f"{i} - End Garbage Collection")
+        logger.info(f"{i} - Begin Billiard worker creation")
         return super()._create_worker_process(i)
 
     def _event_process_exit(self, hub, proc):
@@ -612,12 +618,15 @@ class AsynPool(_pool.Pool):
 
         def verify_process_alive(proc):
             proc = proc()  # is a weakref
+            logger.info(f"Verifying process {proc.index} - {proc.pid} is alive")
             if (proc is not None and proc._is_alive() and
                     proc in waiting_to_start):
+                logger.info("waiting_to_start: ", [p.pid for p in waiting_to_start])
                 assert proc.outqR_fd in fileno_to_outq
                 assert fileno_to_outq[proc.outqR_fd] is proc
                 assert proc.outqR_fd in hub.readers
                 error('Timed out waiting for UP message from %r', proc)
+                logger.info("About to kill process ", proc.pid)
                 os.kill(proc.pid, 9)
 
         def on_process_up(proc):
@@ -626,6 +635,7 @@ class AsynPool(_pool.Pool):
             # receive jobs in the old buffer, so we need to reset the
             # job._write_to and job._scheduled_for attributes used to recover
             # message boundaries when processes exit.
+            logger.info(f"Process {proc.index} - {proc.pid} is up")
             infd = proc.inqW_fd
             for job in cache.values():
                 if job._write_to and job._write_to.inqW_fd == infd:
@@ -1116,6 +1126,7 @@ class AsynPool(_pool.Pool):
 
         Marks the process as ready to receive work.
         """
+        logger.info(f"Received WORKER_UP message from process {pid}")
         try:
             proc = next(w for w in self._pool if w.pid == pid)
         except StopIteration:
@@ -1123,6 +1134,7 @@ class AsynPool(_pool.Pool):
         assert proc.inqW_fd not in self._fileno_to_inq
         assert proc.inqW_fd not in self._all_inqueues
         self._waiting_to_start.discard(proc)
+        logger.info(f"Process {proc.index} - {proc.pid} is removed from waiting_to_start")
         self._fileno_to_inq[proc.inqW_fd] = proc
         self._fileno_to_synq[proc.synqW_fd] = proc
         self._all_inqueues.add(proc.inqW_fd)
