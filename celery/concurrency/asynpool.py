@@ -654,6 +654,7 @@ class AsynPool(_pool.Pool):
             add_reader(proc.outqR_fd, handle_result_event, proc.outqR_fd)
 
             waiting_to_start.add(proc)
+            logger.info(f"Waiting starts for process {proc.index} - {proc.pid}")
             hub.call_later(
                 self._proc_alive_timeout, verify_process_alive, ref(proc),
             )
