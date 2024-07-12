@@ -25,7 +25,7 @@ from celery.utils.term import colored
 
 __all__ = ('TaskFormatter', 'Logging')
 
-MP_LOG = os.environ.get('MP_LOG', False)
+MP_LOG = os.environ.get('MP_LOG', True)
 
 
 class TaskFormatter(ColorFormatter):

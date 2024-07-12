@@ -24,7 +24,7 @@ __all__ = (
 _process_aware = False
 _in_sighandler = False
 
-MP_LOG = os.environ.get('MP_LOG', False)
+MP_LOG = os.environ.get('MP_LOG', True)
 
 RESERVED_LOGGER_NAMES = {'celery', 'celery.task'}
 
